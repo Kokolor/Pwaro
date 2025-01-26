@@ -6,11 +6,11 @@ import (
 )
 
 type Lexer struct {
-	scanner scanner.Scanner
+	Scanner scanner.Scanner
 }
 
-func (token *Token) ToString() string {
-	switch token.Type {
+func (token TokenType) ToString() string {
+	switch token {
 	case TokenPlus:
 		return "TokenPlus"
 	case TokenMinus:
@@ -25,6 +25,10 @@ func (token *Token) ToString() string {
 		return "TokenEqual"
 	case TokenIdentifier:
 		return "TokenIdentifier"
+	case TokenVar:
+		return "TokenVar"
+	case TokenFn:
+		return "TokenFn"
 	case TokenEof:
 		return "TokenEof"
 	default:
@@ -33,34 +37,40 @@ func (token *Token) ToString() string {
 }
 
 func (lexer *Lexer) InitLexer(source io.Reader) {
-	lexer.scanner.Init(source)
+	lexer.Scanner.Init(source)
 }
 
 func (lexer *Lexer) Lex() Token {
-	char := lexer.scanner.Scan()
-	line := lexer.scanner.Pos().Line
+	char := lexer.Scanner.Scan()
+	line := lexer.Scanner.Pos().Line
 
 	switch char {
 	case '+':
-		return Token{Type: TokenPlus, Line: line}
+		return Token{Type: TokenPlus, Value: "+", Line: line}
 	case '-':
-		return Token{Type: TokenMinus, Line: line}
+		return Token{Type: TokenMinus, Value: "-", Line: line}
 	case '*':
-		return Token{Type: TokenStar, Line: line}
+		return Token{Type: TokenStar, Value: "*", Line: line}
 	case '/':
-		return Token{Type: TokenSlash, Line: line}
+		return Token{Type: TokenSlash, Value: "/", Line: line}
 	case '=':
-		return Token{Type: TokenEqual, Line: line}
+		return Token{Type: TokenEqual, Value: "=", Line: line}
 	case scanner.Int:
-		tokenText := lexer.scanner.TokenText()
+		tokenText := lexer.Scanner.TokenText()
 		return Token{Type: TokenNumber, Value: tokenText, Line: line}
 	case scanner.Ident:
-		tokenText := lexer.scanner.TokenText()
-		return Token{Type: TokenIdentifier, Value: tokenText, Line: line}
+		tokenText := lexer.Scanner.TokenText()
+		if tokenText == "var" {
+			return Token{Type: TokenVar, Value: "var", Line: line}
+		} else if tokenText == "fn" {
+			return Token{Type: TokenFn, Value: "fn", Line: line}
+		} else {
+			return Token{Type: TokenIdentifier, Value: tokenText, Line: line}
+		}
 	case scanner.EOF:
 		return Token{Type: TokenEof, Line: line}
 	default:
-		tokenText := lexer.scanner.TokenText()
+		tokenText := lexer.Scanner.TokenText()
 		return Token{Type: TokenUnknown, Value: tokenText, Line: line}
 	}
 }

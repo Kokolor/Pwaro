@@ -12,6 +12,9 @@ const (
 	TokenNumber
 	TokenIdentifier
 
+	TokenVar
+	TokenFn
+
 	TokenUnknown
 )
 

@@ -2,21 +2,20 @@ package main
 
 import (
 	"Pwaro/lexer"
+	"Pwaro/parser"
 	"fmt"
 	"strings"
 )
 
 func main() {
-	source := "_14hello = 7 \n+ 2"
+	source := "4 + 7 * 14 / 12"
 	lex := lexer.Lexer{}
 	lex.InitLexer(strings.NewReader(source))
 
-	for {
-		token := lex.Lex()
-		fmt.Println("[Line:", token.Line, "]", token.ToString(), token.Value)
+	p := parser.Parser{}
+	p.InitParser(&lex)
 
-		if token.Type == lexer.TokenEof {
-			break
-		}
-	}
+	tree := p.Parse()
+
+	fmt.Println(parser.Print(tree))
 }
