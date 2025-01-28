@@ -23,12 +23,16 @@ func (token TokenType) ToString() string {
 		return "TokenNumber"
 	case TokenEqual:
 		return "TokenEqual"
+	case TokenSemi:
+		return "TokenSemi"
 	case TokenIdentifier:
 		return "TokenIdentifier"
 	case TokenVar:
 		return "TokenVar"
 	case TokenFn:
 		return "TokenFn"
+	case TokenPrint:
+		return "TokenPrint"
 	case TokenEof:
 		return "TokenEof"
 	default:
@@ -55,6 +59,8 @@ func (lexer *Lexer) Lex() Token {
 		return Token{Type: TokenSlash, Value: "/", Line: line}
 	case '=':
 		return Token{Type: TokenEqual, Value: "=", Line: line}
+	case ';':
+		return Token{Type: TokenSemi, Value: ";", Line: line}
 	case scanner.Int:
 		tokenText := lexer.Scanner.TokenText()
 		return Token{Type: TokenNumber, Value: tokenText, Line: line}
@@ -64,6 +70,8 @@ func (lexer *Lexer) Lex() Token {
 			return Token{Type: TokenVar, Value: "var", Line: line}
 		} else if tokenText == "fn" {
 			return Token{Type: TokenFn, Value: "fn", Line: line}
+		} else if tokenText == "print" {
+			return Token{Type: TokenPrint, Value: "print", Line: line}
 		} else {
 			return Token{Type: TokenIdentifier, Value: tokenText, Line: line}
 		}

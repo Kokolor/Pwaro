@@ -8,12 +8,14 @@ const (
 	TokenStar
 	TokenSlash
 	TokenEqual
+	TokenSemi
 	TokenEof
 	TokenNumber
 	TokenIdentifier
 
 	TokenVar
 	TokenFn
+	TokenPrint
 
 	TokenUnknown
 )

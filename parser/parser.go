@@ -59,13 +59,30 @@ func (parser *Parser) ParseExpression() *Node {
 	return left
 }
 
+func (parser *Parser) ParseStatement() *Node {
+	if parser.token.Type == lexer.TokenPrint {
+		parser.Advance()
+		expression := parser.ParseExpression()
+		parser.Expect(lexer.TokenSemi)
+
+		return &Node{Token: lexer.Token{Type: lexer.TokenPrint, Value: "print"}, Left: expression}
+	}
+
+	panic(fmt.Sprintln("Syntax Error, expected 'print' statement, got", parser.token.Type.ToString()))
+}
+
 func (parser *Parser) Parse() *Node {
-	return parser.ParseExpression()
+	return parser.ParseStatement()
 }
 
 func Print(node *Node) string {
 	if node.Token.Type == lexer.TokenNumber {
 		return node.Token.Value
+	}
+
+	if node.Token.Type == lexer.TokenPrint {
+		expression := Print(node.Left)
+		return fmt.Sprintf("print %s;", expression)
 	}
 
 	left := Print(node.Left)
