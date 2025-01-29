@@ -34,12 +34,22 @@ func (parser *Parser) ParseNumber() *Node {
 }
 
 func (parser *Parser) ParseFactor() *Node {
-	left := parser.ParseNumber()
+	var left *Node
+
+	switch parser.token.Type {
+	case lexer.TokenNumber:
+		left = parser.ParseNumber()
+	case lexer.TokenIdentifier:
+		left = &Node{Token: parser.token}
+		parser.Advance()
+	default:
+		panic(fmt.Sprintln("Syntax Error, expected number or identifier, got", parser.token.Type.ToString()))
+	}
 
 	for parser.token.Type == lexer.TokenStar || parser.token.Type == lexer.TokenSlash {
 		operator := parser.token
 		parser.Advance()
-		right := parser.ParseNumber()
+		right := parser.ParseFactor()
 		left = &Node{Left: left, Right: right, Token: operator}
 	}
 
@@ -60,32 +70,53 @@ func (parser *Parser) ParseExpression() *Node {
 }
 
 func (parser *Parser) ParseStatement() *Node {
-	if parser.token.Type == lexer.TokenPrint {
+	switch parser.token.Type {
+	case lexer.TokenPrint:
 		parser.Advance()
 		expression := parser.ParseExpression()
 		parser.Expect(lexer.TokenSemi)
 
 		return &Node{Token: lexer.Token{Type: lexer.TokenPrint, Value: "print"}, Left: expression}
-	}
+	case lexer.TokenVar:
+		parser.Advance()
+		name := parser.token
+		parser.Expect(lexer.TokenIdentifier)
+		parser.Expect(lexer.TokenEqual)
+		expression := parser.ParseExpression()
+		parser.Expect(lexer.TokenSemi)
 
-	panic(fmt.Sprintln("Syntax Error, expected 'print' statement, got", parser.token.Type.ToString()))
+		return &Node{Token: lexer.Token{Type: lexer.TokenVar, Value: name.Value}, Left: expression}
+	default:
+		panic(fmt.Sprintln("Syntax Error, expected statement, got", parser.token.Type.ToString()))
+	}
 }
 
-func (parser *Parser) Parse() *Node {
-	return parser.ParseStatement()
+func (parser *Parser) Parse() []*Node {
+	var statements []*Node
+
+	for parser.token.Type != lexer.TokenEof {
+		statement := parser.ParseStatement()
+		statements = append(statements, statement)
+	}
+
+	return statements
 }
 
 func Print(node *Node) string {
-	if node.Token.Type == lexer.TokenNumber {
+	switch node.Token.Type {
+	case lexer.TokenNumber:
 		return node.Token.Value
-	}
-
-	if node.Token.Type == lexer.TokenPrint {
+	case lexer.TokenIdentifier:
+		return node.Token.Value
+	case lexer.TokenPrint:
 		expression := Print(node.Left)
 		return fmt.Sprintf("print %s;", expression)
+	case lexer.TokenVar:
+		expression := Print(node.Left)
+		return fmt.Sprintf("var %s = %s;", node.Token.Value, expression)
+	default:
+		left := Print(node.Left)
+		right := Print(node.Right)
+		return fmt.Sprintf("(%s %s %s)", left, node.Token.Value, right)
 	}
-
-	left := Print(node.Left)
-	right := Print(node.Right)
-	return fmt.Sprintf("(%s %s %s)", left, node.Token.Value, right)
 }

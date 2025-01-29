@@ -1,25 +1,27 @@
 package main
 
 import (
+	"Pwaro/codegen"
 	"Pwaro/lexer"
 	"Pwaro/parser"
-	"Pwaro/codegen"
-	"tinygo.org/x/go-llvm"
 	"fmt"
 	"strings"
+	"tinygo.org/x/go-llvm"
 )
 
 func main() {
-	source := "print 4 + 2;"
+	source := "var hello = 4 + 2;\nprint hello + 4;\nvar test = hello + 7;\nprint hello + test;"
 	lex := lexer.Lexer{}
 	lex.InitLexer(strings.NewReader(source))
 
 	p := parser.Parser{}
 	p.InitParser(&lex)
 
-	tree := p.Parse()
+	trees := p.Parse()
 
-	fmt.Println(parser.Print(tree))
+	for _, tree := range trees {
+		fmt.Println(parser.Print(tree))
+	}
 
 	err := llvm.InitializeNativeTarget()
 	if err != nil {
@@ -36,9 +38,15 @@ func main() {
 	builder := ctx.NewBuilder()
 	builder.SetInsertPointAtEnd(entryBlock)
 
-	result := codegen.GenerateIR(tree, ctx, module, builder)
+	var lastResult llvm.Value
+	codeGen := codegen.CodeGen{}
+	codeGen.InitCodeGen(ctx, module, builder)
 
-	builder.CreateRet(result)
+	for _, tree := range trees {
+		lastResult = codeGen.GenerateIR(tree)
+	}
+
+	builder.CreateRet(lastResult)
 
 	fmt.Println(module.String())
 
