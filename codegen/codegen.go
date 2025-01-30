@@ -15,6 +15,7 @@ type CodeGen struct {
     printf     llvm.Value
     formatStr  llvm.Value
     variables  map[string]llvm.Value
+    functions  map[string]llvm.Value
     printfType llvm.Type
 }
 
@@ -23,6 +24,7 @@ func (codegen *CodeGen) InitCodeGen(ctx llvm.Context, module llvm.Module, builde
     codegen.module = module
     codegen.builder = builder
     codegen.variables = make(map[string]llvm.Value)
+    codegen.functions = make(map[string]llvm.Value)
 
     int8PtrTy := llvm.PointerType(codegen.ctx.Int8Type(), 0)
     codegen.printfType = llvm.FunctionType(codegen.ctx.Int32Type(), []llvm.Type{int8PtrTy}, true)
@@ -33,7 +35,7 @@ func (codegen *CodeGen) InitCodeGen(ctx llvm.Context, module llvm.Module, builde
 
 func (codegen *CodeGen) generateNumber(value string) llvm.Value {
     num, err := strconv.Atoi(value)
-    
+
     if err != nil {
         panic(fmt.Sprintf("Invalid number: %s", value))
     }
@@ -79,6 +81,71 @@ func (codegen *CodeGen) generateVarDecl(name string, value llvm.Value) llvm.Valu
     return llvm.ConstInt(codegen.ctx.Int32Type(), 0, false)
 }
 
+func (codegen *CodeGen) generateBlock(node *parser.Node) llvm.Value {
+    var lastValue llvm.Value
+
+    for _, statement := range node.Statements {
+        lastValue = codegen.GenerateIR(statement)
+    }
+
+    if lastValue.IsNil() {
+        return llvm.ConstInt(codegen.ctx.Int32Type(), 0, false)
+    }
+    return lastValue
+}
+
+func (codegen *CodeGen) generateFunctionDecl(node *parser.Node) llvm.Value {
+    name := node.Token.Value
+
+    funcType := llvm.FunctionType(codegen.ctx.Int32Type(), []llvm.Type{}, false)
+    function := llvm.AddFunction(codegen.module, name, funcType)
+
+    entryBlock := llvm.AddBasicBlock(function, "entry")
+    oldInsertPoint := codegen.builder.GetInsertBlock()
+
+    codegen.builder.SetInsertPointAtEnd(entryBlock)
+
+    oldVariables := codegen.variables
+    codegen.variables = make(map[string]llvm.Value)
+
+    var returnValue llvm.Value
+    if node.Left != nil {
+        returnValue = codegen.GenerateIR(node.Left)
+    } else {
+        returnValue = llvm.ConstInt(codegen.ctx.Int32Type(), 0, false)
+    }
+
+    codegen.builder.CreateRet(returnValue)
+
+    codegen.variables = oldVariables
+
+    if oldInsertPoint.IsNil() {
+        codegen.builder.ClearInsertionPoint()
+    } else {
+        codegen.builder.SetInsertPointAtEnd(oldInsertPoint)
+    }
+
+    codegen.functions[name] = function
+    return function
+}
+
+func (codegen *CodeGen) generateFunctionCall(node *parser.Node) llvm.Value {
+    functionName := node.Left.Token.Value
+    function, exists := codegen.functions[functionName]
+
+    if !exists {
+        panic(fmt.Sprintf("Function '%s' not declared", functionName))
+    }
+
+    if function.IsNil() {
+        panic(fmt.Sprintf("Function '%s' is nil", functionName))
+    }
+
+    functionType := llvm.FunctionType(codegen.ctx.Int32Type(), []llvm.Type{}, false)
+
+    return codegen.builder.CreateCall(functionType, function, []llvm.Value{}, "calltmp")
+}
+
 func (codegen *CodeGen) GenerateIR(node *parser.Node) llvm.Value {
     if node == nil {
         panic("Null node encountered")
@@ -103,8 +170,14 @@ func (codegen *CodeGen) GenerateIR(node *parser.Node) llvm.Value {
         varValue := codegen.GenerateIR(node.Left)
 
         return codegen.generateVarDecl(node.Token.Value, varValue)
+    case lexer.TokenFn:
+        return codegen.generateFunctionDecl(node)
     case lexer.TokenIdentifier:
         return codegen.generateVariable(node.Token.Value)
+    case lexer.TokenCall:
+        return codegen.generateFunctionCall(node)
+    case lexer.TokenBlock:
+        return codegen.generateBlock(node)
     default:
         if node.Left == nil || node.Right == nil {
             panic("Binary operation requires two operands")
@@ -114,5 +187,15 @@ func (codegen *CodeGen) GenerateIR(node *parser.Node) llvm.Value {
         rightValue := codegen.GenerateIR(node.Right)
 
         return codegen.generateBinaryOp(leftValue, rightValue, node.Token.Type)
+    }
+}
+
+func (codegen *CodeGen) DisplayVariables() {
+    for name := range codegen.variables {
+        fmt.Printf("Variable: %s\n", name)
+    }
+
+    for name := range codegen.functions {
+        fmt.Printf("Function: %s\n", name)
     }
 }

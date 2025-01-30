@@ -42,6 +42,16 @@ func (parser *Parser) ParseFactor() *Node {
 	case lexer.TokenIdentifier:
 		left = &Node{Token: parser.token}
 		parser.Advance()
+
+		if parser.token.Type == lexer.TokenLeftParent {
+			parser.Advance()
+			parser.Expect(lexer.TokenRightParen)
+
+			left = &Node{
+				Token: lexer.Token{Type: lexer.TokenCall, Value: left.Token.Value},
+				Left:  left,
+			}
+		}
 	default:
 		panic(fmt.Sprintln("Syntax Error, expected number or identifier, got", parser.token.Type.ToString()))
 	}
@@ -69,6 +79,17 @@ func (parser *Parser) ParseExpression() *Node {
 	return left
 }
 
+func (parser *Parser) ParseBlock() []*Node {
+	var statements []*Node
+
+	for parser.token.Type != lexer.TokenRightParen {
+		statement := parser.ParseStatement()
+		statements = append(statements, statement)
+	}
+
+	return statements
+}
+
 func (parser *Parser) ParseStatement() *Node {
 	switch parser.token.Type {
 	case lexer.TokenPrint:
@@ -86,8 +107,39 @@ func (parser *Parser) ParseStatement() *Node {
 		parser.Expect(lexer.TokenSemi)
 
 		return &Node{Token: lexer.Token{Type: lexer.TokenVar, Value: name.Value}, Left: expression}
+	case lexer.TokenFn:
+		parser.Advance()
+		name := parser.token
+		parser.Expect(lexer.TokenIdentifier)
+		parser.Expect(lexer.TokenLeftParent)
+
+		var body *Node
+		statements := parser.ParseBlock()
+
+		if len(statements) == 1 {
+			body = statements[0]
+		} else {
+			body = &Node{
+				Token:      lexer.Token{Type: lexer.TokenBlock, Value: "block"},
+				Statements: statements,
+			}
+		}
+
+		parser.Expect(lexer.TokenRightParen)
+		parser.Expect(lexer.TokenSemi)
+
+		return &Node{Token: lexer.Token{Type: lexer.TokenFn, Value: name.Value}, Left: body}
+	case lexer.TokenPrototype:
+		parser.Advance()
+		name := parser.token
+		parser.Expect(lexer.TokenIdentifier)
+		parser.Expect(lexer.TokenSemi)
+
+		return &Node{Token: lexer.Token{Type: lexer.TokenPrototype, Value: name.Value}}
 	default:
-		panic(fmt.Sprintln("Syntax Error, expected statement, got", parser.token.Type.ToString()))
+		expr := parser.ParseExpression()
+		parser.Expect(lexer.TokenSemi)
+		return expr
 	}
 }
 
@@ -103,20 +155,51 @@ func (parser *Parser) Parse() []*Node {
 }
 
 func Print(node *Node) string {
+	if node == nil {
+		return ""
+	}
+
 	switch node.Token.Type {
 	case lexer.TokenNumber:
 		return node.Token.Value
 	case lexer.TokenIdentifier:
 		return node.Token.Value
 	case lexer.TokenPrint:
+		if node.Left == nil {
+			return "print;"
+		}
+
 		expression := Print(node.Left)
+
 		return fmt.Sprintf("print %s;", expression)
 	case lexer.TokenVar:
+		if node.Left == nil {
+			return fmt.Sprintf("var %s;", node.Token.Value)
+		}
+
 		expression := Print(node.Left)
+
 		return fmt.Sprintf("var %s = %s;", node.Token.Value, expression)
+	case lexer.TokenFn:
+		body := ""
+
+		if node.Left != nil {
+			body = Print(node.Left)
+		}
+
+		return fmt.Sprintf("fn %s: (\n\t%s\n);", node.Token.Value, body)
+	case lexer.TokenPrototype:
+		return fmt.Sprintf("prototype %s;", node.Token.Value)
+	case lexer.TokenCall:
+		return fmt.Sprintf("%s();", node.Left.Token.Value)
 	default:
+		if node.Left == nil || node.Right == nil {
+			return node.Token.Value
+		}
+
 		left := Print(node.Left)
 		right := Print(node.Right)
+
 		return fmt.Sprintf("(%s %s %s)", left, node.Token.Value, right)
 	}
 }

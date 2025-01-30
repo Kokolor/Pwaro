@@ -9,6 +9,8 @@ const (
 	TokenSlash
 	TokenEqual
 	TokenSemi
+	TokenLeftParent
+	TokenRightParen
 	TokenEof
 	TokenNumber
 	TokenIdentifier
@@ -16,6 +18,10 @@ const (
 	TokenVar
 	TokenFn
 	TokenPrint
+	TokenPrototype
+	TokenCall
+
+	TokenBlock
 
 	TokenUnknown
 )
