@@ -1,0 +1,10 @@
+var x = 10 + 2 * 3;
+print x;
+
+fn foo(
+    var y = 42;
+    print y;
+    y * 2;
+);
+
+print foo();
