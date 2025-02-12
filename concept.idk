@@ -1,0 +1,12 @@
+extern printf - i32(fmt - str, ...);
+
+def add(x - i32, y - i32) = {
+    -> x + y;
+} - i32;
+
+def main() = {
+    var sum - i32 = add(14, 75);
+    printf("%d", sum);
+
+    return 0;
+} - i32;

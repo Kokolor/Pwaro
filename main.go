@@ -14,7 +14,7 @@ import (
 )
 
 func run(filename string) {
-	cmd := exec.Command("lli-19", filename)
+	cmd := exec.Command("lli", filename)
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -80,8 +80,6 @@ func main() {
 
 	fmt.Println("Generated IR:")
 	fmt.Println(module.String())
-
-	codeGen.DisplayVariables()
 
 	if err := llvm.VerifyModule(module, llvm.ReturnStatusAction); err != nil {
 		panic(fmt.Sprintf("Invalid module: %v", err))
