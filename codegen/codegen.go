@@ -25,10 +25,23 @@ func (cg *CodeGen) InitCodeGen(ctx llvm.Context, module llvm.Module, builder llv
 	cg.printf = llvm.Value{}
 }
 
+func (cg *CodeGen) getLLVMType(typ string) llvm.Type {
+	switch typ {
+	case "i8":
+		return cg.ctx.Int8Type()
+	case "i16":
+		return cg.ctx.Int16Type()
+	case "i32":
+		return cg.ctx.Int32Type()
+	case "i64":
+		return cg.ctx.Int64Type()
+	default:
+		panic("MAIS MET UN BON TYPE PUTAIN T'ES CON HEIN")
+	}
+}
+
 func (cg *CodeGen) GenerateIR(node parser.Node) llvm.Value {
 	switch n := node.(type) {
-	case *parser.NodeNumber:
-		return cg.genNumber(n)
 	case *parser.NodeIdent:
 		return cg.genVar(n)
 	case *parser.NodeExpr:
@@ -48,20 +61,12 @@ func (cg *CodeGen) GenerateIR(node parser.Node) llvm.Value {
 	}
 }
 
-func (cg *CodeGen) genNumber(n *parser.NodeNumber) llvm.Value {
-	val, _ := strconv.ParseInt(n.Value, 10, 32)
-	return llvm.ConstInt(cg.ctx.Int32Type(), uint64(val), false)
-}
-
-func (cg *CodeGen) genVar(n *parser.NodeIdent) llvm.Value {
-	alloca, exists := cg.variables[n.Name]
-	if !exists {
-		panic("Undefined variable: " + n.Name)
-	}
-	return cg.builder.CreateLoad(cg.ctx.Int32Type(), alloca, n.Name)
-}
-
 func (cg *CodeGen) genExpr(n *parser.NodeExpr) llvm.Value {
+	if n.Literal != "" {
+		val, _ := strconv.ParseInt(n.Literal, 10, 32)
+		return llvm.ConstInt(cg.ctx.Int32Type(), uint64(val), false)
+	}
+
 	lhs := cg.GenerateIR(n.Left())
 	rhs := cg.GenerateIR(n.Right())
 
@@ -77,6 +82,14 @@ func (cg *CodeGen) genExpr(n *parser.NodeExpr) llvm.Value {
 	default:
 		panic("Pas de euh operator comme on dit: " + n.Operator.ToString())
 	}
+}
+
+func (cg *CodeGen) genVar(n *parser.NodeIdent) llvm.Value {
+	alloca, exists := cg.variables[n.Name]
+	if !exists {
+		panic("Undefined variable: " + n.Name)
+	}
+	return cg.builder.CreateLoad(cg.ctx.Int32Type(), alloca, n.Name)
 }
 
 func (cg *CodeGen) genVarDecl(n *parser.NodeVar) llvm.Value {

@@ -21,7 +21,8 @@ const (
 	TokenPrototype
 	TokenCall
 
-	TokenBlock
+
+	TokenIntType
 
 	TokenUnknown
 )

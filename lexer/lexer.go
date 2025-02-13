@@ -37,6 +37,8 @@ func (token TokenType) ToString() string {
 		return "TokenPrototype"
 	case TokenCall:
 		return "TokenCall"
+	case TokenIntType:
+		return "TokenTypeInt"
 	case TokenEof:
 		return "TokenEof"
 	default:
@@ -74,15 +76,18 @@ func (lexer *Lexer) Lex() Token {
 		return Token{Type: TokenNumber, Value: tokenText, Line: line}
 	case scanner.Ident:
 		tokenText := lexer.Scanner.TokenText()
-		if tokenText == "var" {
+		switch tokenText {
+		case "var":
 			return Token{Type: TokenVar, Value: "var", Line: line}
-		} else if tokenText == "fn" {
+		case "fn":
 			return Token{Type: TokenFn, Value: "fn", Line: line}
-		} else if tokenText == "print" {
+		case "print":
 			return Token{Type: TokenPrint, Value: "print", Line: line}
-		} else if tokenText == "prototype" {
+		case "prototype":
 			return Token{Type: TokenPrototype, Value: "prototype", Line: line}
-		} else {
+		case "i8", "i16", "i32", "i64":
+			return Token{Type: TokenIntType, Value: tokenText, Line: line}
+		default:
 			return Token{Type: TokenIdentifier, Value: tokenText, Line: line}
 		}
 	case scanner.EOF:

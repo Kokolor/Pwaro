@@ -35,6 +35,7 @@ func (n *BaseNode) Statements() []Node {
 type NodeVar struct {
 	BaseNode
 	Name  string
+	Type  string
 	Value Node
 }
 
@@ -56,11 +57,7 @@ type NodeBlock struct {
 type NodeExpr struct {
 	BaseNode
 	Operator lexer.TokenType
-}
-
-type NodeNumber struct {
-	BaseNode
-	Value string
+	Literal  string
 }
 
 type NodeIdent struct {
