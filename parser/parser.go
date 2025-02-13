@@ -26,12 +26,13 @@ func (parser *Parser) Expect(tokenType lexer.TokenType) {
 	parser.Advance()
 }
 
-func (parser *Parser) ParseNumber() Node {
+func (parser *Parser) ParseNumber(typ string) Node {
 	token := parser.token
 	parser.Expect(lexer.TokenNumber)
 	return &NodeExpr{
 		BaseNode: BaseNode{token: token},
 		Literal:  token.Value,
+		Type:     typ,
 	}
 }
 
@@ -44,12 +45,12 @@ func (parser *Parser) ParseIdent() Node {
 	}
 }
 
-func (parser *Parser) ParseFactor() Node {
+func (parser *Parser) ParseFactor(typ string) Node {
 	var left Node
 
 	switch parser.token.Type {
 	case lexer.TokenNumber:
-		left = parser.ParseNumber()
+		left = parser.ParseNumber(typ)
 	case lexer.TokenIdentifier:
 		left = parser.ParseIdent()
 		if parser.token.Type == lexer.TokenLeftParent {
@@ -69,7 +70,7 @@ func (parser *Parser) ParseFactor() Node {
 	for parser.token.Type == lexer.TokenStar || parser.token.Type == lexer.TokenSlash {
 		operator := parser.token
 		parser.Advance()
-		right := parser.ParseFactor()
+		right := parser.ParseFactor(typ)
 		left = &NodeExpr{
 			BaseNode: BaseNode{
 				token: operator,
@@ -83,12 +84,12 @@ func (parser *Parser) ParseFactor() Node {
 	return left
 }
 
-func (parser *Parser) ParseExpr() Node {
-	left := parser.ParseFactor()
+func (parser *Parser) ParseExpr(typ string) Node {
+	left := parser.ParseFactor(typ)
 	for parser.token.Type == lexer.TokenPlus || parser.token.Type == lexer.TokenMinus {
 		operator := parser.token
 		parser.Advance()
-		right := parser.ParseFactor()
+		right := parser.ParseFactor(typ)
 		left = &NodeExpr{
 			BaseNode: BaseNode{
 				token: operator,
@@ -96,6 +97,7 @@ func (parser *Parser) ParseExpr() Node {
 				right: right,
 			},
 			Operator: operator.Type,
+			Type:     typ,
 		}
 	}
 	return left
@@ -118,7 +120,7 @@ func (parser *Parser) ParseStatement() Node {
 	switch parser.token.Type {
 	case lexer.TokenPrint:
 		parser.Advance()
-		expression := parser.ParseExpr()
+		expression := parser.ParseExpr("i32")
 		parser.Expect(lexer.TokenSemi)
 		return &NodePrint{
 			BaseNode: BaseNode{
@@ -127,7 +129,7 @@ func (parser *Parser) ParseStatement() Node {
 			},
 			Expr: expression,
 		}
-		
+
 	case lexer.TokenVar:
 		parser.Advance()
 		name := parser.token
@@ -135,7 +137,7 @@ func (parser *Parser) ParseStatement() Node {
 		typ := parser.token
 		parser.Expect(lexer.TokenIntType)
 		parser.Expect(lexer.TokenEqual)
-		expression := parser.ParseExpr()
+		expression := parser.ParseExpr(typ.Value)
 		parser.Expect(lexer.TokenSemi)
 		fmt.Println("Type of", name.Value, "is", typ.Value)
 		return &NodeVar{
@@ -164,9 +166,8 @@ func (parser *Parser) ParseStatement() Node {
 			Name: name.Value,
 			Body: body,
 		}
-
 	default:
-		expr := parser.ParseExpr()
+		expr := parser.ParseExpr("i32")
 		parser.Expect(lexer.TokenSemi)
 		return expr
 	}

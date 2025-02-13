@@ -58,6 +58,7 @@ type NodeExpr struct {
 	BaseNode
 	Operator lexer.TokenType
 	Literal  string
+	Type     string
 }
 
 type NodeIdent struct {
